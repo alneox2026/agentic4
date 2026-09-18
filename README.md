@@ -83,12 +83,19 @@ cd ~
 git clone https://github.com/YOUR_USER/v6stack.git ceodev-v6
 cd ~/ceodev-v6
 
-# Build container images
+# Build stack-isolated container images. For this repository the defaults are
+# agentic4-gateway, agentic4-persistence-worker, and agentic4-billing-api.
 bash ./scripts/cloudshell_build_middleware.sh
 
-# Deploy via Terraform
+# Create a reviewed Terraform plan and deploy it. The script uses the isolated
+# state prefix stacks/<repository-name>/middleware and refuses unreviewed
+# delete/replace actions.
 bash ./scripts/cloudshell_deploy_middleware.sh
 ```
+
+Do not set `IMPORT_EXISTING_RESOURCES=true` for a new stack. That switch is
+only for recovering a lost state after verifying each imported resource belongs
+to this stack.
 
 ---
 

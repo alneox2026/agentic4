@@ -10,16 +10,25 @@ PROJECT_ID="${PROJECT_ID:-ceo-dev123}"
 REGION="${REGION:-us-central1}"
 REPOSITORY="${REPOSITORY:-ceosystem}"
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MIDDLEWARE_STACK_NAME="${MIDDLEWARE_STACK_NAME:-$(basename "${ROOT_DIR}")}"
+MIDDLEWARE_IMAGE_PREFIX="${MIDDLEWARE_IMAGE_PREFIX:-${MIDDLEWARE_STACK_NAME}}"
+
+if [[ ! "${MIDDLEWARE_IMAGE_PREFIX}" =~ ^[a-z][a-z0-9-]*$ ]]; then
+  echo "ERROR: MIDDLEWARE_IMAGE_PREFIX must contain only lowercase letters, digits, and hyphens, and start with a letter." >&2
+  exit 2
+fi
+
 echo "================================================================="
 echo " Building Middleware Container Images"
 echo " Project ID : ${PROJECT_ID}"
 echo " Region     : ${REGION}"
 echo " Repository : ${REPOSITORY}"
+echo " Image Prefix : ${MIDDLEWARE_IMAGE_PREFIX}"
 echo "================================================================="
 
 gcloud config set project "${PROJECT_ID}"
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
 TAG="$(git rev-parse --short=12 HEAD 2>/dev/null || echo "managed-$(date +%s)")"
@@ -35,14 +44,14 @@ gcloud artifacts repositories create "${REPOSITORY}" \
   --description="Middleware Docker Repository" \
   --project="${PROJECT_ID}"
 
-GATEWAY_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/managed-agents-gateway:${TAG}"
-GATEWAY_LATEST="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/managed-agents-gateway:latest"
+GATEWAY_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${MIDDLEWARE_IMAGE_PREFIX}-gateway:${TAG}"
+GATEWAY_LATEST="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${MIDDLEWARE_IMAGE_PREFIX}-gateway:latest"
 
-WORKER_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/managed-agents-worker:${TAG}"
-WORKER_LATEST="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/managed-agents-worker:latest"
+WORKER_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${MIDDLEWARE_IMAGE_PREFIX}-persistence-worker:${TAG}"
+WORKER_LATEST="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${MIDDLEWARE_IMAGE_PREFIX}-persistence-worker:latest"
 
-BILLING_API_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/managed-agents-billing-api:${TAG}"
-BILLING_API_LATEST="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/managed-agents-billing-api:latest"
+BILLING_API_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${MIDDLEWARE_IMAGE_PREFIX}-billing-api:${TAG}"
+BILLING_API_LATEST="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${MIDDLEWARE_IMAGE_PREFIX}-billing-api:latest"
 
 echo "--> [1/3] Building Gateway Image: ${GATEWAY_IMAGE}"
 gcloud builds submit . \

@@ -1,6 +1,6 @@
 # Multi-Cluster Deployment & State Isolation Guide
 
-This guide explains how to deploy and maintain isolated **Managed Agents Middleware clusters** (e.g. `managed-v1`, `gemini-prod`, `antigravity-cluster`) within the same Google Cloud Project alongside existing ADK clusters (`v3`, `v4`, `v5`) without resource collisions or state overwrites.
+This guide explains how to deploy and maintain isolated **Managed Agents Middleware clusters** (for example, `agentic4`, `gemini-prod`, or `antigravity-cluster`) within the same Google Cloud project without resource collisions or state overwrites.
 
 ---
 
@@ -11,17 +11,17 @@ Each cluster in our SuperApp architecture operates as an independent, decoupled 
 ```
                   Google Cloud Project (e.g. ceo-dev123)
   ┌─────────────────────────────────┐   ┌─────────────────────────────────────┐
-  │     ADK Cluster V5 Stack        │   │    Managed Agents Cluster Stack     │
-  │ • ceoagent-gateway-v5           │   │ • managed-agents-gateway-v1         │
-  │ • ceoagent-persistence-worker-v5│   │ • managed-agents-worker-v1          │
-  │ • ceoagent-billing-api-v5       │   │ • managed-agents-billing-api-v1     │
-  │ • Topic: agent-turn-events-v5   │   │ • Topic: managed-agents-events-v1   │
-  │ • Firestore: agent_threads_v5   │   │ • Firestore: managed_agent_threads  │
-  │ • SA: ceoagent-gateway-sa-v5    │   │ • SA: managed-agents-gateway-sa     │
+  │       Existing Stack             │   │          agentic4 Stack              │
+  │ • existing-gateway               │   │ • agentic4-gateway                   │
+  │ • existing-worker                │   │ • agentic4-persistence-worker        │
+  │ • existing-billing-api           │   │ • agentic4-billing-api               │
+  │ • Topic: existing-turn-events    │   │ • Topic: agentic4-turn-events        │
+  │ • Firestore: existing collections│   │ • Firestore: *_agentic4 collections  │
+  │ • distinct service accounts      │   │ • agentic4-*-sa accounts             │
   └────────────────┬────────────────┘   └──────────────────┬──────────────────┘
                    │                                       │
                    ▼                                       ▼
-      gs://...-tfstate/ceodev-v5/             gs://...-tfstate/managed-agents/
+      gs://...-tfstate/stacks/existing/        gs://...-tfstate/stacks/agentic4/
 ```
 
 ---
@@ -34,21 +34,16 @@ Each cluster MUST write to its own unique GCS state path:
 
 | Cluster Stack | Remote State GCS Path |
 | :--- | :--- |
-| **ADK V3** | `gs://<PROJECT_ID>-tfstate/ceodev-v3/middleware/default.tfstate` |
-| **ADK V5** | `gs://<PROJECT_ID>-tfstate/ceodev-v5/middleware/default.tfstate` |
-| **Managed Agents (Default)** | `gs://<PROJECT_ID>-tfstate/managed-agents/middleware/default.tfstate` |
-| **Managed Agents (Custom Suffix)** | `gs://<PROJECT_ID>-tfstate/managed-agents-<SUFFIX>/middleware/default.tfstate` |
+| **Existing stack** | `gs://<PROJECT_ID>-tfstate/stacks/<existing-stack>/middleware/default.tfstate` |
+| **agentic4** | `gs://<PROJECT_ID>-tfstate/stacks/agentic4/middleware/default.tfstate` |
+| **Another stack** | `gs://<PROJECT_ID>-tfstate/stacks/<stack-name>/middleware/default.tfstate` |
 
 ### How It Works Automatically
 Our deployment script [`scripts/cloudshell_deploy_middleware.sh`](../scripts/cloudshell_deploy_middleware.sh) automatically generates `backend.hcl` before running Terraform:
 
 ```bash
-CLUSTER_SUFFIX="${CLUSTER_SUFFIX:-}"
-if [[ -n "${CLUSTER_SUFFIX}" ]]; then
-  TF_STATE_PREFIX="managed-agents-${CLUSTER_SUFFIX}/middleware"
-else
-  TF_STATE_PREFIX="managed-agents/middleware"
-fi
+MIDDLEWARE_STACK_NAME="${MIDDLEWARE_STACK_NAME:-$(basename "${ROOT_DIR}")}"
+TF_STATE_PREFIX="${TF_STATE_PREFIX:-stacks/${MIDDLEWARE_STACK_NAME}/middleware}"
 
 cat > backend.hcl <<EOF
 bucket = "${PROJECT_ID}-tfstate"
@@ -62,24 +57,27 @@ terraform init -backend-config=backend.hcl -reconfigure
 
 ## 3. Dynamic Resource Naming Checklist
 
-All Terraform resources are fully parameterized to prevent `409 Already Exists` conflicts.
+All Terraform resources must be uniquely named per stack. The build script also
+uses a per-stack Artifact Registry image prefix, so one stack never deploys a
+different stack's mutable `latest` image.
 
 When configuring a new cluster:
 1. **Cloud Run Service Names**:
-   * `gateway_service_name`: `managed-agents-gateway` (or `managed-agents-gateway-<SUFFIX>`)
-   * `worker_service_name`: `managed-agents-worker` (or `managed-agents-worker-<SUFFIX>`)
-   * `billing_api_service_name`: `managed-agents-billing-api` (or `managed-agents-billing-api-<SUFFIX>`)
+   * `gateway_service_name`: `agentic4-gateway`
+   * `worker_service_name`: `agentic4-persistence-worker`
+   * `billing_api_service_name`: `agentic4-billing-api`
 2. **Pub/Sub Topic**:
-   * `pubsub_topic_name`: `managed-agents-turn-events` (or `managed-agents-turn-events-<SUFFIX>`)
+   * `pubsub_topic_name`: `agentic4-turn-events`
 3. **Service Accounts**:
-   * `gateway_service_account_name`: `managed-agents-gateway-sa`
-   * `worker_service_account_name`: `managed-agents-worker-sa`
-   * `billing_api_service_account_name`: `managed-agents-billing-sa`
-   * `eventarc_service_account_name`: `managed-agents-eventarc-sa`
-   * `billing_reconciler_service_account_name`: `managed-agents-reconciler-sa`
+   * `gateway_service_account_name`: `agentic4-gateway-sa`
+   * `worker_service_account_name`: `agentic4-worker-sa`
+   * `billing_api_service_account_name`: `agentic4-billing-api-sa`
+   * `eventarc_service_account_name`: `agentic4-eventarc-sa`
+   * `billing_reconciler_service_account_name`: `agentic4-reconciler-sa`
 4. **Firestore Collections**:
-   * Can share existing customer wallets (`customer_wallets_v3`) so users don't have to top up multiple balances.
-   * Or specify isolated collections if strict tenancy separation is required.
+   * Use `*_agentic4` collections for a new stack, including webhook receipts
+     and cancellation requests. Sharing wallet or webhook collections requires
+     an explicit migration and is not a safe default.
 
 ---
 
@@ -117,18 +115,18 @@ bash ./scripts/cloudshell_build_middleware.sh
 # Default deployment:
 bash ./scripts/cloudshell_deploy_middleware.sh
 
-# Or with a dedicated cluster suffix:
-CLUSTER_SUFFIX=v1 bash ./scripts/cloudshell_deploy_middleware.sh
+# Or override the name explicitly when the repository name is unsuitable:
+MIDDLEWARE_STACK_NAME=agentic4 bash ./scripts/cloudshell_deploy_middleware.sh
 ```
 
 ---
 
 ## 5. Troubleshooting & FAQs
 
-### Q: Why did an existing cluster disappear when I deployed a new one?
-* **Reason**: Both repositories were using the exact same `prefix` in `backend.hcl`. Terraform thought you were updating resources within the same state file and replaced them.
-* **Fix**: Ensure each repository uses a distinct `CLUSTER_SUFFIX` or distinct `prefix` in `backend.hcl`.
+### Q: Why did Terraform propose deleting an existing cluster?
+* **Reason**: The active state contained another stack's resources, often because they were imported into the new stack's state. Renaming service variables then appears to Terraform as a delete-and-create operation.
+* **Fix**: Stop before applying. Use a unique `TF_STATE_PREFIX`, never auto-import legacy resources, and investigate the original stack's state before attempting recovery. The deployment script now refuses delete or replace actions unless `ALLOW_TERRAFORM_DELETES=true` is explicitly set.
 
-### Q: Why did Terraform throw `Error 409: Service account or Service already exists`?
-* **Reason**: The service account or Cloud Run service was created by another state file or manual command.
-* **Fix**: Provide a unique `CLUSTER_SUFFIX` (e.g. `CLUSTER_SUFFIX=v2 bash ./scripts/cloudshell_deploy_middleware.sh`) so all resource names are unique.
+### Q: Why did Terraform throw an index-already-exists `409`?
+* **Reason**: Firestore composite indexes are scoped to their collection. The new stack reused a prior stack's cancellation-request collection while attempting to manage the same index from a different state.
+* **Fix**: Use the stack-specific cancellation collection (`subscription_cancellation_requests_agentic4`) and its matching index definition.

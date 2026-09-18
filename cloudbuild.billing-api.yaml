@@ -1,7 +1,7 @@
 # Build only the public Stripe Billing API image.  Override _IMAGE when
 # deploying a non-default project, repository, or immutable release tag.
 substitutions:
-  _IMAGE: "us-central1-docker.pkg.dev/ceo-dev123/ceosystem/managed-agents-billing-api:latest"
+  _IMAGE: "us-central1-docker.pkg.dev/ceo-dev123/ceosystem/agentic4-billing-api:latest"
 
 
 steps:

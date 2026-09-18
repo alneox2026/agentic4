@@ -1,7 +1,7 @@
 {
   "indexes": [
     {
-      "collectionGroup": "subscription_cancellation_requests_v3",
+      "collectionGroup": "subscription_cancellation_requests_agentic4",
       "queryScope": "COLLECTION",
       "fields": [
         {

@@ -2,9 +2,9 @@ param(
     [string]$ProjectId = "ceo-dev123",
     [string]$Region = "us-central1",
     [string]$Repository = "ceosystem",
-    [string]$GatewayServiceName = "managed-agents-gateway",
-    [string]$WorkerServiceName = "managed-agents-worker",
-    [string]$BillingApiServiceName = "managed-agents-billing-api",
+    [string]$GatewayServiceName = "agentic4-gateway",
+    [string]$WorkerServiceName = "agentic4-persistence-worker",
+    [string]$BillingApiServiceName = "agentic4-billing-api",
     [string]$Tag = "latest"
 )
 

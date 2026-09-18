@@ -211,7 +211,7 @@ variable "firestore_customer_billing_accounts_collection" {
 variable "firestore_stripe_webhook_events_collection" {
   description = "Top-level private Firestore collection for immutable Stripe webhook event receipts."
   type        = string
-  default     = "stripe_webhook_events_v3"
+  default     = "stripe_webhook_events_agentic4"
 }
 
 
@@ -556,7 +556,7 @@ variable "billing_api_reconciliation_audience" {
 variable "firestore_subscription_cancellation_requests_collection" {
   description = "Top-level private Firestore collection for subscription cancellation intents."
   type        = string
-  default     = "subscription_cancellation_requests_v3"
+  default     = "subscription_cancellation_requests_agentic4"
 }
 
 variable "alert_notification_channels" {

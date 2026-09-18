@@ -25,12 +25,12 @@ from common.billing import customer_wallet_document_id
 NANOS_PER_USD = Decimal("1000000000")
 WALLETS_COLLECTION = os.getenv(
     "FIRESTORE_CUSTOMER_WALLETS_COLLECTION",
-    "customer_wallets_v3",
-).strip() or "customer_wallets_v3"
+    "customer_wallets_agentic4",
+).strip() or "customer_wallets_agentic4"
 TRANSACTIONS_COLLECTION = os.getenv(
     "FIRESTORE_WALLET_TRANSACTIONS_COLLECTION",
-    "wallet_transactions_v3",
-).strip() or "wallet_transactions_v3"
+    "wallet_transactions_agentic4",
+).strip() or "wallet_transactions_agentic4"
 
 
 

@@ -80,6 +80,6 @@ def test_firestore_rules_file_exists_and_denies_client_access_to_cancellation_re
     rules_path = Path(__file__).resolve().parents[2] / "firestore.rules"
     assert rules_path.exists(), "firestore.rules must be tracked in the repository root"
     content = rules_path.read_text(encoding="utf-8")
-    assert "subscription_cancellation_requests_v3" in content
+    assert "subscription_cancellation_requests_agentic4" in content
     assert "allow read, write: if false;" in content
 
